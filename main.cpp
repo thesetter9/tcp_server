@@ -1,6 +1,7 @@
-#include <iostream>
+#include "Logger.h"
 
 int main() {
-    std::cout << "TCP server: hello, world!" << std::endl;
-    return 0;
+    Logger logger;
+    logger.error("Ошибка");
+    logger.info("Информация");
 }
