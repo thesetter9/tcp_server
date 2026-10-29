@@ -7,17 +7,19 @@
 int main(int argc, char* argv[]) {
     try
     {
-        auto logger = std::make_unique<Logger>();
-        auto server = std::make_unique<TcpServer>();
+        
         if (argc < 2)
-            server->run(logger); // берем порт по умолч. = 8080
+            throw std::runtime_error("Write a port of server");
         else {
             unsigned long value = std::stoul(argv[1]);
             if (value < 1024 || value > 65535)
                 throw std::runtime_error("Port must be in 1..65535, got " + std::string(argv[1]));
             unsigned short port = static_cast<unsigned short>(value);
-            server->run(logger, port);
+            auto logger = std::make_shared<Logger>();
+            auto server = std::make_unique<TcpServer>(port, logger);
+            server->run();
         }
+        
     }
     catch (const std::exception& exp)
     {

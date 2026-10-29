@@ -2,13 +2,18 @@
 #include "Logger.h"
 #include <memory>
 #include <thread>
+#include "CommandProcessor.h"
 
 class TcpServer
 {
 private:
     unsigned short port_;
-    static void start_comm_with_client(int sock_desc, std::unique_ptr<Logger>& logger);
+    void start_comm_with_client(int sock_desc);
+    std::shared_ptr<Logger> logger_;
+    CommandProcessor cmd_processor;
+    
 
 public:
-    void run(std::unique_ptr<Logger>& logger, unsigned short port = 8080);
+    TcpServer(unsigned short port, std::shared_ptr<Logger> logger);
+    void run();
 };

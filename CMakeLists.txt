@@ -12,4 +12,4 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -Wall -Wextra")
 
 
-add_executable(server main.cpp Logger.cpp TcpServer.cpp)
+add_executable(server main.cpp Logger.cpp TcpServer.cpp CommandProcessor.cpp)
