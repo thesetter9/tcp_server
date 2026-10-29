@@ -3,12 +3,12 @@
 #include <chrono>
 #include <iomanip>
 #include <thread>
+#include <format>
 
 void Logger::log(const std::string& level, const std::string& message) {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-    std::cout << "[" << std::put_time(std::localtime(&now_c), "%F %T") << "] [" << level << "] " << message << std::endl;
+    auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+    std::cout << std::format("[{:%F %T}] [{}] {}", now, level, message) << std::endl; // использую std::format
 }
 
 void Logger::info(const std::string& message) {
