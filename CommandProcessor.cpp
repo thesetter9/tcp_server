@@ -17,8 +17,10 @@ std::string CommandProcessor::process_command(const std::string& message) const
 {
 
     std::string line = message;
-    while (!line.empty() && (line.back() == '\n' || line.back() == '\r'))
+    while (!line.empty() && (line.back() == '\n' || line.back() == '\r' || line.back() == ' '))
         line.pop_back();
+    while (!line.empty() && (line.front() == '\n' || line.front() == '\r' || line.front() == ' '))
+        line.erase(0, 1);
     std::string str = str_to_lower(line);
     if (str == "ping")
         return "pong";
@@ -28,7 +30,12 @@ std::string CommandProcessor::process_command(const std::string& message) const
         return std::format("{:%F %T}", now);
     }
     else if (str.rfind("echo ", 0) == 0)
-        return line.substr(5);
+    {
+        line = line.substr(5);
+        while (!line.empty() && (line.front() == '\n' || line.front() == '\r' || line.front() == ' '))
+            line.erase(0, 1);
+        return line;
+    }
     else if (str == "quit")
         return "bye";
     else
