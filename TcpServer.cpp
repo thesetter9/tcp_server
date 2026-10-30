@@ -5,28 +5,60 @@
 #include <iostream>
 #include <cstring>
 
-TcpServer::TcpServer(unsigned short port, std::shared_ptr<Logger> logger) : 
-    port_(port), logger_(std::move(logger)) {}
-
-void TcpServer::start_comm_with_client(int sock_desc) {
-    logger_->info("Client connected, fd = " + std::to_string(sock_desc));
-    char buf[1024];
-    int bytes_read;
-    std::string process_res;
-    while (process_res != "bye") // пока идет общение с клиентом
+bool TcpServer::send_all(int sock_desc, const std::string &message)
+{
+    size_t sent = 0;
+    while (sent < message.size())
     {
-        bytes_read = recv(sock_desc, buf, 1024, 0); // записываем сообщение в буффер
-        if (bytes_read <= 0)
+        ssize_t n = send(sock_desc, message.data() + sent, message.size() - sent, MSG_NOSIGNAL); // MSG_NOSIGNAL - не убиваем процесс при SIGPIPE
+        if (n < 0 && errno == EINTR)
+            continue;
+        if (n <= 0)
+            return false;
+        sent += static_cast<size_t>(sent);
+    }
+    return true;
+}
+
+TcpServer::TcpServer(unsigned short port, std::shared_ptr<Logger> logger) : port_(port), logger_(std::move(logger)) {}
+
+void TcpServer::start_comm_with_client(int sock_desc)
+{
+    logger_->info("Client connected, fd = " + std::to_string(sock_desc));
+    constexpr size_t max_line_size = 4096;
+    constexpr size_t buf_size = 1024;
+    char buf[buf_size];
+    std::string process_res;
+    bool flag = true;
+    while (flag)
+    {
+        ssize_t n = recv(sock_desc, buf, buf_size, 0);
+        if (n <= 0)
             break;
-        process_res = cmd_processor.process_command(std::string(buf, bytes_read));
-        send(sock_desc, process_res.data(), process_res.size(), 0);
-        send(sock_desc, "\n", 1, 0);
+        process_res.append(buf, static_cast<size_t>(n));
+        size_t pos;
+        while (flag && (pos = process_res.find('\n')) != std::string::npos)
+        {
+            std::string cur_line = process_res.substr(0, pos);
+            process_res.erase(0, pos + 1);
+            std::string reply = cmd_processor.process_command(cur_line) + "\n";
+            if (!send_all(sock_desc, reply))
+            {
+                flag = false;
+                break;
+            }
+            if (reply == "bye")
+                break;
+        }
+        if (process_res.size() > max_line_size)
+            break;
     }
     close(sock_desc);
     logger_->info("Client disconnected, fd = " + std::to_string(sock_desc));
 }
 
-void TcpServer::run() {
+void TcpServer::run()
+{
     int sock, listener;
     sockaddr_in addr;
 
@@ -36,9 +68,11 @@ void TcpServer::run() {
         throw std::runtime_error("Socket failed: " + std::string(strerror(errno)));
     }
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(port_); // выбираем порт сервера
+    addr.sin_port = htons(port_);             // выбираем порт сервера
     addr.sin_addr.s_addr = htonl(INADDR_ANY); // принимаем любой IP
-    if (bind(listener, (sockaddr*)&addr, sizeof(addr)) < 0)
+    int yes = 1;
+    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    if (bind(listener, (sockaddr *)&addr, sizeof(addr)) < 0)
     {
         throw std::runtime_error("Bind failed: " + std::string(strerror(errno)));
     }
@@ -57,5 +91,4 @@ void TcpServer::run() {
         std::thread t(&TcpServer::start_comm_with_client, this, sock);
         t.detach();
     }
-
 }
